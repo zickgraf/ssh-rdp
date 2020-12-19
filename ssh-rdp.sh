@@ -33,8 +33,9 @@
     #The "null,null" video filters will be changed to -vf scale by sed later on if prescale is requested
     VIDEO_ENC_CPU="-threads 1 -vcodec libx264 -thread_type slice -slices 1 -level 32 -preset ultrafast -tune zerolatency -intra-refresh 1 -x264opts vbv-bufsize=1:slice-max-size=1500:keyint=$FPS:sliced_threads=1 -pix_fmt nv12 -vf 'null,null'"
     VIDEO_ENC_NVGPU="-threads 1 -c:v h264_nvenc -preset llhq -delay 0 -zerolatency 1 -vf 'null,null'"
+    VIDEO_ENC_NVGPU="-threads 1 -c:v hevc_nvenc -preset llhq -delay 0 -zerolatency 1 -vf 'null,null'"
     VIDEO_ENC_AMDGPU="-threads 1 -vaapi_device /dev/dri/renderD128 -c:v h264_vaapi -bf 0 -vf 'null,null,hwupload,scale_vaapi=format=nv12'"
-    VIDEO_ENC_INTELGPU="-threads 1 -vaapi_device /dev/dri/renderD128 -c:v h264_vaapi -bf 0 -vf 'null,null,hwupload,scale_vaapi=format=nv12'"
+    VIDEO_ENC_INTELGPU="-threads 1 -vaapi_device /dev/dri/renderD128 -c:v vp9_vaapi -bf 0 -vf 'null,null,hwupload,scale_vaapi=format=nv12'"
     #VIDEO_ENC_INTELGPU="-threads 1 -vaapi_device /dev/dri/renderD128 -c:v h264_vaapi -bf 0 -vf 'null,null,format=nv12,hwupload'"
 
     AUDIO_ENC_OPUS="-acodec libopus -vbr off -application lowdelay"    #opus, low delay great quality
@@ -265,10 +266,10 @@ setup_input_loop() {
         DEVNAME=$(name_from_event "$DEVICE")
         if  [ "$DEVNAME" = "$KBDNAME" ] ; then 
             echo "device add mykbd$i /dev/input/$DEVICE"  >>$NESCRIPT
-            echo "hotkey add mykbd$i key:$GRAB_HOTKEY:1 grab toggle" >>$NESCRIPT
-            echo "hotkey add mykbd$i key:$GRAB_HOTKEY:0 nop" >>$NESCRIPT
-            echo "hotkey add mykbd$i key:$FULLSCREENSWITCH_HOTKEY:1 exec \"/usr/bin/echo FULLSCREENSWITCH_HOTKEY\"" >>$NESCRIPT
-            echo "hotkey add mykbd$i key:$FULLSCREENSWITCH_HOTKEY:0 nop" >>$NESCRIPT
+            echo "hotkey add mykbd$i key:$GRAB_HOTKEY:0 grab toggle" >>$NESCRIPT
+            echo "hotkey add mykbd$i key:$GRAB_HOTKEY:1 nop" >>$NESCRIPT
+            echo "hotkey add mykbd$i key:$FULLSCREENSWITCH_HOTKEY:0 exec \"/usr/bin/echo FULLSCREENSWITCH_HOTKEY\"" >>$NESCRIPT
+            echo "hotkey add mykbd$i key:$FULLSCREENSWITCH_HOTKEY:1 nop" >>$NESCRIPT
                 else
             echo "device add dev$i /dev/input/$DEVICE"  >>$NESCRIPT
         fi
@@ -416,6 +417,10 @@ done
         
         #speed=2 instead of untimed, seems smoother:
             VIDEOPLAYER="taskset -c 0 mpv - --input-cursor=no --input-vo-keyboard=no --input-default-bindings=no --hwdec=auto --title="$WTITLE" --speed=2 --no-cache --profile=low-latency --opengl-glfinish=yes --opengl-swapinterval=0 $VPLAYEROPTS"
+            #VIDEOPLAYER="taskset -c 0 mpv - --input-cursor=no --input-vo-keyboard=no --hwdec=auto --title="$WTITLE" --speed=2 --no-cache --profile=low-latency --opengl-glfinish=yes --opengl-swapinterval=0 $VPLAYEROPTS"
+            VIDEOPLAYER="taskset -c 0 mpv - --gpu-context=wayland --no-audio --wayland-disable-vsync=yes video-sync=display-desync --input-cursor=no --input-vo-keyboard=no --hwdec=auto --title="$WTITLE" --untimed --no-cache --profile=low-latency --opengl-glfinish=yes --opengl-swapinterval=0 -audio-buffer=0 -vd-lavc-threads=1 -cache-pause=no -demuxer-lavf-o-add=fflags=+nobuffer -demuxer-lavf-probe-info=nostreams -demuxer-lavf-analyzeduration=0.1 -video-sync=desync -interpolation=no -video-latency-hacks=yes -stream-buffer-size=4k --cache-secs=0 --demuxer-readahead-secs=0 --no-correct-pts --fps=60 --framedrop=decoder+vo $VPLAYEROPTS"
+
+            VIDEOPLAYER="taskset -c 0 mpv - --input-cursor=no --input-vo-keyboard=no --input-default-bindings=no --hwdec=auto --title="$WTITLE" --untimed --no-cache --profile=low-latency --opengl-glfinish=yes --opengl-swapinterval=0 --gpu-context=wayland --no-audio --wayland-disable-vsync=yes --video-sync=display-desync --framedrop=no --speed=1.01 --demuxer-readahead-secs=0 --no-correct-pts --fps=60 --video-latency-hacks=yes $VPLAYEROPTS"
 
         #less hammering, experimental, introduce some stuttering :/
             #VIDEOPLAYER="taskset -c 0 mpv - --input-cursor=no --input-vo-keyboard=no --input-default-bindings=no --hwdec=auto --title="$WTITLE" --speed=2 --no-cache --profile=low-latency --opengl-glfinish=yes --opengl-swapinterval=0 --cache-pause=yes --cache-pause-wait=0.001"
